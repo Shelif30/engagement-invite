@@ -68,16 +68,25 @@ export default function FrameScroll({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active) return;
     const sec = section.current!;
-    const getY = () => getLenis()?.scroll ?? window.scrollY;
-    const setY = (y: number) => {
+    // Phones/tablets: only real touches count as the guest taking over. (iOS Safari moves the
+    // page by itself when its address bar collapses, so "unexpected movement" can't be trusted.)
+    const touchScreen =
+      window.matchMedia("(pointer: coarse)").matches ||
+      "ontouchstart" in window;
+    const endY = () => sec.offsetTop + sec.offsetHeight - window.innerHeight;
+    const write = (y: number) => {
       const l = getLenis();
-      if (l) l.scrollTo(y, { immediate: true, force: true });
+      // Touch screens: scroll natively (Lenis does not drive touch scrolling and Safari is
+      // happiest with plain window.scrollTo). Desktop: go through Lenis so it stays in sync.
+      if (l && !touchScreen) l.scrollTo(y, { immediate: true, force: true });
       else window.scrollTo(0, y);
     };
-    const endY = () => sec.offsetTop + sec.offsetHeight - window.innerHeight;
+
     let lastInput = -Infinity;
-    let expected = getY();
+    let touching = false;
     let done = false;
+    let pos = window.scrollY; // exact film position, kept as a float so rounding never stalls it
+    let lastWritten = pos;
     let shown: Mode = "playing";
     const show = (m: Mode) => {
       if (m !== shown) {
@@ -88,6 +97,14 @@ export default function FrameScroll({ active }: { active: boolean }) {
 
     const onInput = () => {
       lastInput = performance.now();
+    };
+    const onTouchStart = () => {
+      touching = true;
+      onInput();
+    };
+    const onTouchEnd = () => {
+      touching = false;
+      onInput();
     };
     const onKey = (e: KeyboardEvent) => {
       if (
@@ -104,48 +121,54 @@ export default function FrameScroll({ active }: { active: boolean }) {
         onInput();
     };
     window.addEventListener("wheel", onInput, { passive: true });
-    window.addEventListener("touchstart", onInput, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onInput, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
     window.addEventListener("keydown", onKey);
 
     const startAt = performance.now() + 1700; // let the cover finish parting first
     const tick = (_time: number, deltaMs: number) => {
       if (done) return;
       const now = performance.now();
-      const y = getY();
-      // scrollbar drags or any other scroll we didn't make count as the guest taking over
-      if (Math.abs(y - expected) > 3) {
-        lastInput = now;
-        expected = y;
-      }
+      const y = window.scrollY;
+      // Desktop only: a scrollbar drag shows up as a big jump we didn't make.
+      if (!touchScreen && Math.abs(y - lastWritten) > 30) lastInput = now;
       if (y >= endY() - 2) {
         done = true;
         show("done");
         return;
       }
-      if (now < startAt) return;
-      if (userPaused.current) {
-        show("paused");
-        expected = y;
-        return;
-      }
-      if (now - lastInput < RESUME_AFTER_MS) {
-        show("waiting");
-        expected = y;
+
+      const holding =
+        now < startAt ||
+        userPaused.current ||
+        touching ||
+        now - lastInput < RESUME_AFTER_MS;
+      if (holding) {
+        pos = y;
+        lastWritten = y;
+        if (now >= startAt) show(userPaused.current ? "paused" : "waiting");
         return;
       }
       show("playing");
       const speed = (sec.offsetHeight - window.innerHeight) / AUTOPLAY_SECONDS;
-      const next = Math.min(endY(), y + (speed * Math.min(deltaMs, 50)) / 1000);
-      expected = next;
-      setY(next);
+      pos = Math.min(endY(), pos + (speed * Math.min(deltaMs, 50)) / 1000);
+      write(pos);
+      lastWritten = pos;
+      if (pos >= endY() - 0.5) {
+        done = true;
+        show("done");
+      }
     };
     gsap.ticker.add(tick);
     return () => {
       gsap.ticker.remove(tick);
       window.removeEventListener("wheel", onInput);
-      window.removeEventListener("touchstart", onInput);
+      window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onInput);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
       window.removeEventListener("keydown", onKey);
     };
   }, [active]);

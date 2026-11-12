@@ -2,10 +2,10 @@
 export const EVENT = {
   groom: "Shelif",
   bride: "Greena",
-  // Countdown runs to the start of the day in India (IST). Change the time here if you want
-  // it to count down to the ceremony time instead, e.g. "2026-12-06T10:30:00+05:30".
-  countdownTo: "2026-12-06T00:00:00+05:30",
+  // Countdown runs to the ceremony time in India (IST).
+  countdownTo: "2026-12-06T10:00:00+05:30",
   dateLong: "Sunday, 6 December 2026",
+  time: "10:00 AM",
   dateParts: ["Sunday", "06", "December", "2026"] as const,
   venue: "Jubilee Hall",
   venueArea: "Carmel Nagar, Nagercoil",
@@ -25,8 +25,10 @@ export const VERSES = {
 
 const base = import.meta.env.BASE_URL;
 export const FRAME_COUNT = 238;
-export const frameUrl = (i: number) => `${base}frames/f${String(i).padStart(3, "0")}.webp`;
+export const frameUrl = (i: number) =>
+  `${base}frames/f${String(i).padStart(3, "0")}.webp`;
 export const asset = (p: string) => `${base}${p}`;
 
 export const reducedMotion = () =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
