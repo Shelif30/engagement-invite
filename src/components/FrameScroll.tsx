@@ -9,7 +9,39 @@ const AUTOPLAY_SECONDS = 6;
 /** After the guest stops scrolling, wait this long before the film carries on by itself. */
 const RESUME_AFTER_MS = 2500;
 
-type Mode = "playing" | "paused" | "waiting" | "done";
+type Mode = "playing" | "paused" | "waiting" | "done" | "idle";
+
+/**
+ * Where the couple stand across the film (0 = first frame, 1 = last), as a fraction of the
+ * frame width. On tall phone screens only a slice of each wide frame fits, so the crop
+ * follows this path to keep them centred: they enter on the right, walk to the middle,
+ * and the closing close-ups sit left of centre.
+ */
+const COUPLE_PATH: [number, number][] = [
+  [0, 0.6],
+  [0.13, 0.76],
+  [0.21, 0.68],
+  [0.3, 0.58],
+  [0.38, 0.53],
+  [0.47, 0.52],
+  [0.55, 0.48],
+  [0.72, 0.48],
+  [0.8, 0.52],
+  [0.89, 0.43],
+  [1, 0.37],
+];
+function coupleX(t: number) {
+  for (let i = 1; i < COUPLE_PATH.length; i++) {
+    const [t1, x1] = COUPLE_PATH[i];
+    if (t <= t1) {
+      const [t0, x0] = COUPLE_PATH[i - 1];
+      const k = (t - t0) / (t1 - t0 || 1);
+      const e = k * k * (3 - 2 * k);
+      return x0 + (x1 - x0) * e;
+    }
+  }
+  return COUPLE_PATH[COUPLE_PATH.length - 1][1];
+}
 
 /**
  * Scroll-scrubbed film: the ZIP frames are drawn to a canvas as the reader scrolls,
@@ -38,9 +70,10 @@ export default function FrameScroll({ active }: { active: boolean }) {
     const s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
     const w = img.naturalWidth * s,
       h = img.naturalHeight * s;
-    const focusX = cw / ch < 1 ? 0.56 : 0.5;
-    const x = (cw - w) * focusX,
-      y = (ch - h) * 0.5;
+    // centre the couple, without ever showing past the frame's edges
+    const centre = coupleX(state.current.frame / (FRAME_COUNT - 1));
+    const x = Math.min(0, Math.max(cw - w, cw / 2 - centre * w));
+    const y = (ch - h) * 0.5;
     ctx.drawImage(img, x, y, w, h);
     state.current.drawn = frames[i] ? i : -1;
   };
@@ -129,9 +162,13 @@ export default function FrameScroll({ active }: { active: boolean }) {
 
     const startAt = performance.now() + 1700; // let the cover finish parting first
     const tick = (_time: number, deltaMs: number) => {
-      if (done) return;
       const now = performance.now();
       const y = window.scrollY;
+      // after the film: show the "Scroll down" cue only while the guest is actually at the end
+      if (done) {
+        show(y >= endY() - window.innerHeight * 0.12 ? "done" : "idle");
+        return;
+      }
       // Desktop only: a scrollbar drag shows up as a big jump we didn't make.
       if (!touchScreen && Math.abs(y - lastWritten) > 30) lastInput = now;
       if (y >= endY() - 2) {
@@ -325,7 +362,7 @@ export default function FrameScroll({ active }: { active: boolean }) {
             </span>
           </button>
         )}
-        {mode !== "done" && (
+        {mode !== "done" && mode !== "idle" && (
           <button
             className="film-play"
             onClick={toggle}
