@@ -5,7 +5,7 @@ import { EVENT, FRAME_COUNT } from "../lib/config";
 import { frames, nearestFrame, onFrameProgress } from "../lib/frames";
 
 /** Seconds the film takes when it plays by itself. */
-const AUTOPLAY_SECONDS = 6;
+const AUTOPLAY_SECONDS = 10;
 /** After the guest stops scrolling, wait this long before the film carries on by itself. */
 const RESUME_AFTER_MS = 2500;
 
