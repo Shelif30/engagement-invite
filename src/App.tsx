@@ -29,20 +29,38 @@ export default function App() {
 
   // The garden photo is the backdrop for the whole site; it drifts gently as you scroll.
   useGSAP(() => {
-    gsap.fromTo(bg.current, { yPercent: 0, scale: 1.12 }, {
-      yPercent: -6, scale: 1.02, ease: "none",
-      scrollTrigger: { start: 0, end: "max", scrub: true },
-    });
+    gsap.fromTo(
+      bg.current,
+      { yPercent: 0, scale: 1.12 },
+      {
+        yPercent: -6,
+        scale: 1.02,
+        ease: "none",
+        scrollTrigger: { start: 0, end: "max", scrub: true },
+      },
+    );
   });
 
   return (
     <>
-      <div className="site-bg" ref={bg} style={{ backgroundImage: `url(${asset("img/garden.webp")})` }} aria-hidden="true" />
+      <div
+        className="site-bg"
+        ref={bg}
+        style={{ backgroundImage: `url(${asset("img/garden.webp")})` }}
+        aria-hidden="true"
+      />
       <div className="site-veil" aria-hidden="true" />
-      {opened && <FallingNature className="nature-canvas site-canvas" leaves={10} petals={10} fireflies={14} />}
+      {opened && (
+        <FallingNature
+          className="nature-canvas site-canvas"
+          leaves={10}
+          petals={10}
+          fireflies={14}
+        />
+      )}
 
       <main className={opened ? "is-open" : undefined} aria-hidden={!opened}>
-        <FrameScroll />
+        <FrameScroll active={opened} />
         <Verse />
         <Rings />
         <Countdown />
@@ -50,7 +68,12 @@ export default function App() {
         <Closing />
       </main>
 
-      {splash && <Splash onOpen={() => setOpened(true)} onGone={() => setSplash(false)} />}
+      {splash && (
+        <Splash
+          onOpen={() => setOpened(true)}
+          onGone={() => setSplash(false)}
+        />
+      )}
     </>
   );
 }
