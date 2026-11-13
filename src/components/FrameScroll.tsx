@@ -3,6 +3,7 @@ import { useGSAP } from "@gsap/react";
 import { gsap, ScrollTrigger, getLenis } from "../lib/smooth";
 import { EVENT, FRAME_COUNT } from "../lib/config";
 import { frames, nearestFrame, onFrameProgress } from "../lib/frames";
+import FinaleBloom from "./FinaleBloom";
 
 /** Seconds the film takes when it plays by itself. */
 const AUTOPLAY_SECONDS = 10;
@@ -54,6 +55,9 @@ export default function FrameScroll({ active }: { active: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef({ frame: 0, drawn: -1 });
   const [mode, setMode] = useState<Mode>("playing");
+  // the garden blooms around the names once the film reaches its last frames
+  const [finale, setFinale] = useState(false);
+  const finaleOn = useRef(false);
   const userPaused = useRef(false);
 
   const draw = (force = false) => {
@@ -233,6 +237,16 @@ export default function FrameScroll({ active }: { active: boolean }) {
           start: "top top",
           end: "bottom bottom",
           scrub: 0.8,
+          onUpdate: (self) => {
+            const p = self.progress;
+            if (!finaleOn.current && p > 0.8) {
+              finaleOn.current = true;
+              setFinale(true);
+            } else if (finaleOn.current && p < 0.72) {
+              finaleOn.current = false;
+              setFinale(false);
+            }
+          },
         },
       });
       tl.to(
@@ -311,6 +325,7 @@ export default function FrameScroll({ active }: { active: boolean }) {
       <div className={`film-sticky${mode === "done" ? " is-done" : ""}`}>
         <canvas ref={canvas} className="film-canvas" aria-hidden="true" />
         <div className="film-shade" />
+        <FinaleBloom active={finale} />
         <div className="film-copy">
           <p className="beat beat-1">
             <span className="script-lg">In a garden of grace</span>

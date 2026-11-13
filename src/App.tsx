@@ -10,6 +10,7 @@ import Countdown from "./components/Countdown";
 import Venue from "./components/Venue";
 import Closing from "./components/Closing";
 import FallingNature from "./components/FallingNature";
+import MusicToggle from "./components/MusicToggle";
 
 export default function App() {
   const [splash, setSplash] = useState(true);
@@ -74,6 +75,7 @@ export default function App() {
           onGone={() => setSplash(false)}
         />
       )}
+      <MusicToggle />
     </>
   );
 }
